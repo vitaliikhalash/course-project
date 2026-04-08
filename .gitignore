@@ -1,5 +1,3 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
 # dependencies
 /node_modules
 /.pnp
@@ -10,19 +8,49 @@
 !.yarn/releases
 !.yarn/versions
 
-# testing
-/coverage
-
 # next.js
 /.next/
 /out/
+/build/
+.swc/
 
-# production
-/build
+# typescript
+*.tsbuildinfo
 
-# misc
-.DS_Store
-*.pem
+# testing
+/coverage
+/playwright-report/
+/test-results/
+/blob-report/
+.vitest/
+
+# env files
+.env
+.env.*
+!.env.example
+!.env.template
+!.env.sample
+
+# prisma
+/src/generated/prisma/
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+*.sqlite-journal
+
+/app/generated/prisma
+
+# e2e auth
+/src/tests/e2e/.auth/*.json
+!/src/tests/e2e/.auth/.gitkeep
+
+# daemon
+/daemon/*.log
+/daemon/.last_hash
+
+# vercel
+.vercel
 
 # debug
 npm-debug.log*
@@ -30,12 +58,19 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# tooling caches
+.eslintcache
+.prettiercache
+.turbo
 
-# vercel
-.vercel
+# os & editors
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
 
-# typescript
-*.tsbuildinfo
-next-env.d.ts
+# misc
+*.pem
