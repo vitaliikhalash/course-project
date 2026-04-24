@@ -1,0 +1,58 @@
+# audit-broker systemd unit
+#
+# Install on Fedora:
+#   sudo cp daemon/audit-broker.service /etc/systemd/system/audit-broker.service
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now audit-broker.service
+#
+# Inspect:
+#   systemctl status audit-broker.service
+#   journalctl -u audit-broker.service -f
+#
+# After editing this file, repeat the cp + daemon-reload + restart:
+#   sudo cp daemon/audit-broker.service /etc/systemd/system/audit-broker.service
+#   sudo systemctl daemon-reload
+#   sudo systemctl restart audit-broker.service
+#
+# Stop / disable:
+#   sudo systemctl stop audit-broker.service
+#   sudo systemctl disable audit-broker.service
+#
+# Note: this unit assumes a local Redis is reachable at REDIS_URL. On Fedora
+# you can install + enable it with:
+#   sudo dnf install -y redis
+#   sudo systemctl enable --now redis
+#
+# DATABASE_URL / secrets: do **not** use `EnvironmentFile=` pointing at a
+# file under the home tree here — systemd may fail with "Failed to load
+# environment files: Permission denied" (common with SELinux on Fedora:
+# `man systemd.exec` and home-dir access). The broker loads
+# `../.env` from the repo at process start (`loadProjectEnv` in
+# `daemon/audit-broker.js`) as User=, so the service user only needs
+# read access: `ls -l .env` should be owner-readable (e.g. 600, owned by
+# the same User=).
+# Optional: override DATABASE_URL in a drop-in, e.g.
+#   sudo systemctl edit audit-broker
+#   [Service]
+#   Environment=DATABASE_URL=...
+
+[Unit]
+Description=Audit Broker Daemon (Redis -> log files)
+After=network-online.target redis.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=vkhalash
+WorkingDirectory=/home/vkhalash/repos/course-project
+Environment=NODE_ENV=production
+Environment=REDIS_URL=redis://127.0.0.1:6379
+Environment=LOG_DIR=/home/vkhalash/repos/course-project/daemon
+ExecStart=/usr/bin/node /home/vkhalash/repos/course-project/daemon/audit-broker.js
+Restart=always
+RestartSec=2
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
