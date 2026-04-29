@@ -1,0 +1,7 @@
+FROM mcr.microsoft.com/playwright:v1.59.1-noble
+
+WORKDIR /workspace
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends postgresql-client \
+    && rm -rf /var/lib/apt/lists/*
