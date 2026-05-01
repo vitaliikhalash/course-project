@@ -225,7 +225,7 @@ export const TransactionDrawer = ({
         aria-modal="true"
         aria-label="Деталі транзакції"
         className={cn(
-          "fixed inset-y-0 right-0 z-[61] flex w-full max-w-full flex-col bg-white shadow-2xl transition-transform duration-300 ease-in-out md:max-w-[24rem]",
+          "fixed inset-y-0 right-0 z-[61] flex w-full max-w-full flex-col bg-white transition-transform duration-300 ease-in-out md:max-w-[24rem]",
           panelTransform,
         )}
       >

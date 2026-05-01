@@ -130,7 +130,7 @@ export const ProfileSidebar = ({ open, onClose }: ProfileSidebarProps) => {
         aria-modal="true"
         aria-label="Профіль"
         className={cn(
-          "bg-surface-card fixed inset-y-0 right-0 z-[61] flex w-full max-w-full flex-col shadow-2xl transition-transform duration-300 ease-in-out md:max-w-[24rem]",
+          "bg-surface-card fixed inset-y-0 right-0 z-[61] flex w-full max-w-full flex-col transition-transform duration-300 ease-in-out md:max-w-[24rem]",
           panelTransform,
         )}
       >
