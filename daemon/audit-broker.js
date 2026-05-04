@@ -11,9 +11,12 @@ const {
   PrismaNeon
 } = require('@prisma/adapter-neon');
 const {
+  PrismaPg
+} = require('@prisma/adapter-pg');
+const {
   neonConfig
 } = require('@neondatabase/serverless');
-neonConfig.webSocketConstructor = ws;
+
 function loadProjectEnv() {
   const envPath = path.join(__dirname, '..', '.env');
   try {
@@ -39,6 +42,16 @@ function loadProjectEnv() {
   }
 }
 loadProjectEnv();
+
+function createPrismaAdapter(connectionString) {
+  if (process.env.PRISMA_DATABASE_ADAPTER === 'pg') {
+    return new PrismaPg(connectionString);
+  }
+  neonConfig.webSocketConstructor = ws;
+  return new PrismaNeon({
+    connectionString
+  });
+}
 const REDIS_URL = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
 const LOG_DIR = process.env.LOG_DIR || __dirname;
 const QUEUE = 'audit_queue';
@@ -55,9 +68,7 @@ redis.on('error', err => {
 });
 const databaseUrl = process.env.DATABASE_URL;
 const prisma = databaseUrl ? new PrismaClient({
-  adapter: new PrismaNeon({
-    connectionString: databaseUrl
-  })
+  adapter: createPrismaAdapter(databaseUrl)
 }) : null;
 function readPreviousHashSync() {
   try {

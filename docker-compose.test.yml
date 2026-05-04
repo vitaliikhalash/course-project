@@ -25,12 +25,17 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/app_test?schema=public
+      PRISMA_DATABASE_ADAPTER: pg
+      HOST_UID: "${HOST_UID}"
+      HOST_GID: "${HOST_GID}"
       PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
+      AUTH_SECRET: e2e_ci_auth_secret_must_be_at_least_32_chars
+      AUTH_URL: http://127.0.0.1:3000
       CI: "true"
       REDIS_URL: redis://127.0.0.1:6379
     volumes:
-      - .:/workspace
-    command: ["bash", "-lc", "./scripts/test-docker.sh"]
+      - .:/workspace:z
+    command: ["bash", "-lc", "bash /workspace/scripts/test-docker.sh"]
 
 volumes:
   pg_test_data:

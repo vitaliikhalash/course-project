@@ -7,6 +7,9 @@ cleanup() {
     kill "${APP_PID}" 2>/dev/null || true
     wait "${APP_PID}" 2>/dev/null || true
   fi
+  if [[ -n "${HOST_UID:-}" ]] && [[ "${HOST_UID}" =~ ^[0-9]+$ ]] && [[ "${HOST_UID}" != "0" ]]; then
+    chown -R "${HOST_UID}:${HOST_GID:-${HOST_UID}}" /workspace 2>/dev/null || true
+  fi
 }
 
 trap cleanup EXIT INT TERM
