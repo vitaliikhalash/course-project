@@ -12,13 +12,22 @@ test.describe("Admin dashboard (admin role)", () => {
     ).toBeVisible();
     await expect(
       page.getByRole("heading", {
-        name: "Запити на розмороження",
+        name: "Запити на розмороження карток",
       }),
     ).toBeVisible();
-    const seededRow = page.getByRole("row", {
-      name: /E2E Pending Card/i,
-    });
-    await expect(seededRow).toBeVisible();
+    await expect(
+      page.getByRole("heading", {
+        name: "Картки користувачів",
+      }),
+    ).toBeVisible();
+    const seededRow = page
+      .getByRole("row", {
+        name: /E2E Pending Card/i,
+      })
+      .filter({
+        has: page.getByRole("button", { name: "Активувати" }),
+      });
+    await expect(seededRow).toHaveCount(1);
     await seededRow
       .getByRole("button", {
         name: "Активувати",

@@ -361,6 +361,7 @@ async function loginAndPersistState(
       name: "Увійти",
     })
     .click();
+  await expect(page).not.toHaveURL(/\/api\/auth\/error/);
   await expect(
     page.getByRole("button", {
       name: "Відкрити профіль",

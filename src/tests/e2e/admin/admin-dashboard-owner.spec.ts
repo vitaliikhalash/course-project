@@ -14,7 +14,7 @@ test.describe("Admin dashboard (owner role)", () => {
     ).toBeVisible();
     await expect(
       page.getByRole("heading", {
-        name: "Запити на розмороження",
+        name: "Запити на розмороження карток",
       }),
     ).toBeVisible();
     await expect(

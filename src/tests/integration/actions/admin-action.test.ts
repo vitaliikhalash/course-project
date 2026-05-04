@@ -4,6 +4,7 @@ import { revalidatePathMock } from "@/tests/setup/mocks/navigation";
 const mocks = vi.hoisted(() => ({
   prisma: {
     card: {
+      findUnique: vi.fn(),
       findUniqueOrThrow: vi.fn(),
       update: vi.fn(),
     },
@@ -34,7 +35,9 @@ vi.mock("@/lib/card-generator", () => ({
 import {
   approveCard,
   cancelUnfreezeRequest,
+  freezeCard,
   rejectCard,
+  setCardStatus,
   setUserRole,
   unfreezeCard,
 } from "@/lib/actions/admin";
@@ -87,6 +90,29 @@ describe("actions/admin", () => {
     await expect(
       cancelUnfreezeRequest("cmofrjyxo0003jyp8scd7iy7t"),
     ).rejects.toThrow("Forbidden");
+  });
+  it("throws Forbidden for freezeCard when session role is USER", async () => {
+    authMock.mockResolvedValue({
+      user: {
+        id: "u-1",
+        role: "USER",
+      },
+    });
+    await expect(freezeCard("cmofrjyxo0003jyp8scd7iy7t")).rejects.toThrow(
+      "Forbidden",
+    );
+  });
+  it("throws Forbidden for setCardStatus when session role is USER", async () => {
+    authMock.mockResolvedValue({
+      user: {
+        id: "u-1",
+        role: "USER",
+      },
+    });
+    const fd = new FormData();
+    fd.set("cardId", "cmofrjyxo0003jyp8scd7iy7t");
+    fd.set("newStatus", "FROZEN");
+    await expect(setCardStatus(fd)).rejects.toThrow("Forbidden");
   });
   it("approveCard no-ops for invalid cardId", async () => {
     authMock.mockResolvedValue({
@@ -248,6 +274,92 @@ describe("actions/admin", () => {
       },
     });
     expect(revalidatePathMock).toHaveBeenCalledWith("/admin");
+  });
+  it("freezeCard runs transaction for ACTIVE card", async () => {
+    authMock.mockResolvedValue({
+      user: {
+        id: "a-1",
+        role: "ADMIN",
+      },
+    });
+    mocks.prisma.card.findUnique.mockResolvedValue({
+      status: "ACTIVE",
+    });
+    mocks.prisma.$transaction.mockResolvedValue([]);
+    await freezeCard("cmofrjyxo0003jyp8scd7iy7t");
+    expect(mocks.prisma.$transaction).toHaveBeenCalled();
+    expect(revalidatePathMock).toHaveBeenCalledWith("/admin");
+    expect(revalidatePathMock).toHaveBeenCalledWith("/wallet");
+    expect(revalidatePathMock).toHaveBeenCalledWith("/transfers");
+  });
+  it("freezeCard no-ops when card is not ACTIVE", async () => {
+    authMock.mockResolvedValue({
+      user: {
+        id: "a-1",
+        role: "ADMIN",
+      },
+    });
+    mocks.prisma.card.findUnique.mockResolvedValue({
+      status: "REJECTED",
+    });
+    await freezeCard("cmofrjyxo0003jyp8scd7iy7t");
+    expect(mocks.prisma.$transaction).not.toHaveBeenCalled();
+  });
+  it("setCardStatus no-ops for invalid form payload", async () => {
+    authMock.mockResolvedValue({
+      user: {
+        id: "a-1",
+        role: "ADMIN",
+      },
+    });
+    const fd = new FormData();
+    fd.set("cardId", "not-a-cuid");
+    fd.set("newStatus", "ACTIVE");
+    await setCardStatus(fd);
+    expect(mocks.prisma.card.findUnique).not.toHaveBeenCalled();
+  });
+  it("setCardStatus holds pending card as FROZEN", async () => {
+    authMock.mockResolvedValue({
+      user: {
+        id: "a-1",
+        role: "ADMIN",
+      },
+    });
+    mocks.prisma.card.findUnique.mockResolvedValue({
+      status: "PENDING",
+    });
+    mocks.prisma.$transaction.mockResolvedValue([]);
+    const fd = new FormData();
+    fd.set("cardId", "cmofrjyxo0003jyp8scd7iy7t");
+    fd.set("newStatus", "FROZEN");
+    await setCardStatus(fd);
+    expect(mocks.prisma.$transaction).toHaveBeenCalled();
+    expect(revalidatePathMock).toHaveBeenCalledWith("/admin");
+    expect(revalidatePathMock).toHaveBeenCalledWith("/wallet");
+  });
+  it("setCardStatus delegates PENDING to ACTIVE to approveCard", async () => {
+    authMock.mockResolvedValue({
+      user: {
+        id: "a-1",
+        role: "ADMIN",
+      },
+    });
+    mocks.prisma.card.findUnique.mockResolvedValueOnce({
+      status: "PENDING",
+    });
+    mocks.prisma.card.findUniqueOrThrow.mockResolvedValue({
+      id: "cmofrjyxo0003jyp8scd7iy7t",
+      status: "PENDING",
+      product: {
+        paymentSystem: "VISA",
+      },
+    });
+    mocks.prisma.$transaction.mockResolvedValue([]);
+    const fd = new FormData();
+    fd.set("cardId", "cmofrjyxo0003jyp8scd7iy7t");
+    fd.set("newStatus", "ACTIVE");
+    await setCardStatus(fd);
+    expect(mocks.prisma.$transaction).toHaveBeenCalled();
   });
   it("setUserRole no-ops for invalid form payload", async () => {
     authMock.mockResolvedValue({
