@@ -1,6 +1,7 @@
 "use server";
 
 import bcrypt from "bcryptjs";
+import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
 import { registerUserFormSchema } from "@/lib/validations/auth";
 import { getFirstZodErrorMessage } from "@/lib/validations/common";
@@ -31,6 +32,17 @@ export async function registerUser(formData: FormData) {
         error: "Користувач з таким email вже існує",
       };
     }
+    const existingPhone = await prisma.userProfile.findUnique({
+      where: {
+        phoneNumber,
+      },
+    });
+    if (existingPhone) {
+      return {
+        success: false,
+        error: "Користувач з таким номером телефону вже існує",
+      };
+    }
     const hashedPassword = await bcrypt.hash(password, 10);
     await prisma.user.create({
       data: {
@@ -49,6 +61,24 @@ export async function registerUser(formData: FormData) {
       success: true,
     };
   } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002" &&
+      Array.isArray(error.meta?.target)
+    ) {
+      if (error.meta.target.includes("phoneNumber")) {
+        return {
+          success: false,
+          error: "Користувач з таким номером телефону вже існує",
+        };
+      }
+      if (error.meta.target.includes("email")) {
+        return {
+          success: false,
+          error: "Користувач з таким email вже існує",
+        };
+      }
+    }
     const message = error instanceof Error ? error.message : String(error);
     return {
       success: false,
