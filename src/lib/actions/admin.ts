@@ -9,7 +9,10 @@ import {
   generateIban,
 } from "@/lib/card-generator";
 import { prisma } from "@/lib/prisma";
-import { setUserRoleInputSchema } from "@/lib/validations/admin";
+import {
+  setCardStatusInputSchema,
+  setUserRoleInputSchema,
+} from "@/lib/validations/admin";
 import { parseCardId } from "@/lib/validations/card";
 function assertCardModerator(
   session: Session | null,
@@ -263,4 +266,141 @@ export async function cancelUnfreezeRequest(cardId: string): Promise<void> {
   ]);
   revalidatePath("/admin");
   revalidatePath("/wallet");
+}
+export async function freezeCard(cardId: string): Promise<void> {
+  const session = await auth();
+  assertCardModerator(session);
+  const validCardId = parseCardId(cardId);
+  if (!validCardId) {
+    return;
+  }
+  const card = await prisma.card.findUnique({
+    where: {
+      id: validCardId,
+    },
+    select: {
+      status: true,
+    },
+  });
+  if (!card || card.status !== "ACTIVE") {
+    return;
+  }
+  await prisma.$transaction([
+    prisma.card.update({
+      where: {
+        id: validCardId,
+      },
+      data: {
+        status: "FROZEN",
+        unfreezeRequestedAt: null,
+      },
+    }),
+    prisma.systemAuditLog.create({
+      data: {
+        action: "FREEZE_CARD",
+        entityType: "Card",
+        entityId: validCardId,
+        userId: session.user.id,
+        details: {
+          newStatus: "FROZEN",
+        } as Prisma.InputJsonValue,
+      },
+    }),
+  ]);
+  revalidatePath("/admin");
+  revalidatePath("/wallet");
+  revalidatePath("/transfers");
+}
+async function holdPendingCardAsFrozen(cardId: string): Promise<void> {
+  const session = await auth();
+  assertCardModerator(session);
+  const validCardId = parseCardId(cardId);
+  if (!validCardId) {
+    return;
+  }
+  const card = await prisma.card.findUnique({
+    where: {
+      id: validCardId,
+    },
+    select: {
+      status: true,
+    },
+  });
+  if (!card || card.status !== "PENDING") {
+    return;
+  }
+  await prisma.$transaction([
+    prisma.card.update({
+      where: {
+        id: validCardId,
+      },
+      data: {
+        status: "FROZEN",
+        unfreezeRequestedAt: null,
+      },
+    }),
+    prisma.systemAuditLog.create({
+      data: {
+        action: "HOLD_PENDING_CARD",
+        entityType: "Card",
+        entityId: validCardId,
+        userId: session.user.id,
+        details: {
+          newStatus: "FROZEN",
+        } as Prisma.InputJsonValue,
+      },
+    }),
+  ]);
+  revalidatePath("/admin");
+  revalidatePath("/wallet");
+}
+export async function setCardStatus(formData: FormData): Promise<void> {
+  const session = await auth();
+  assertCardModerator(session);
+  const parsed = setCardStatusInputSchema.safeParse({
+    cardId: formData.get("cardId"),
+    newStatus: formData.get("newStatus"),
+  });
+  if (!parsed.success) {
+    return;
+  }
+  const { cardId, newStatus } = parsed.data;
+  const validCardId = parseCardId(cardId);
+  if (!validCardId) {
+    return;
+  }
+  const card = await prisma.card.findUnique({
+    where: {
+      id: validCardId,
+    },
+    select: {
+      status: true,
+    },
+  });
+  if (!card) {
+    return;
+  }
+  if (card.status === newStatus) {
+    return;
+  }
+  if (card.status === "PENDING" && newStatus === "ACTIVE") {
+    await approveCard(cardId);
+    return;
+  }
+  if (card.status === "PENDING" && newStatus === "REJECTED") {
+    await rejectCard(cardId);
+    return;
+  }
+  if (card.status === "PENDING" && newStatus === "FROZEN") {
+    await holdPendingCardAsFrozen(cardId);
+    return;
+  }
+  if (card.status === "ACTIVE" && newStatus === "FROZEN") {
+    await freezeCard(cardId);
+    return;
+  }
+  if (card.status === "FROZEN" && newStatus === "ACTIVE") {
+    await unfreezeCard(cardId);
+    return;
+  }
 }

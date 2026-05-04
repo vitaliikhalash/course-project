@@ -1,12 +1,15 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 import { CardItem } from "@/components/card-item";
 import { HeroSlider } from "@/components/hero-slider";
 import { IconLink } from "@/components/icon-link";
+import { PanelPagination } from "@/components/panel-pagination";
 import { QuickTransfer } from "@/components/quick-transfer";
 import { TransactionCard } from "@/components/transaction-card";
 import { Panel } from "@/components/ui/panel";
+import { PANEL_PAGE_SIZE } from "@/lib/pagination";
 import { resolveDisplayName } from "@/lib/transaction-display";
 import {
   SerializedCard,
@@ -24,8 +27,37 @@ export default function HomeClient({
   initialCards,
   initialTransactions,
 }: HomeClientProps) {
-  const cards = initialCards.map(toCard).filter((c) => c.status === "ACTIVE");
-  const transactions = initialTransactions.map(toTransaction);
+  const [txPage, setTxPage] = useState(1);
+
+  const activeCards = useMemo(
+    () =>
+      initialCards.map(toCard).filter((c) => c.status === "ACTIVE"),
+    [initialCards],
+  );
+  const transactions = useMemo(
+    () => initialTransactions.map(toTransaction),
+    [initialTransactions],
+  );
+
+  const totalTxPages = Math.max(
+    1,
+    Math.ceil(transactions.length / PANEL_PAGE_SIZE),
+  );
+  const txPageClamped = Math.min(txPage, totalTxPages);
+  const pagedHomeTransactions = useMemo(
+    () =>
+      transactions.slice(
+        (txPageClamped - 1) * PANEL_PAGE_SIZE,
+        txPageClamped * PANEL_PAGE_SIZE,
+      ),
+    [transactions, txPageClamped],
+  );
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setTxPage(1);
+  }, [transactions]);
+
   return (
     <main className="max-w-content box-border flex w-full flex-col items-start gap-4 px-4 text-center text-5xl">
       <HeroSlider />
@@ -46,9 +78,9 @@ export default function HomeClient({
                 aria-label="Відкрити параметри гаманця"
               />
             </div>
-            {cards.length > 0 ? (
+            {activeCards.length > 0 ? (
               <div className="flex max-h-[21.2rem] min-w-0 flex-col gap-3 self-stretch overflow-x-hidden overflow-y-auto">
-                {cards.map((card) => (
+                {activeCards.map((card) => (
                   <Link
                     key={card.id}
                     href={`/wallet?card=${encodeURIComponent(card.id)}`}
@@ -92,7 +124,7 @@ export default function HomeClient({
             </div>
             <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 self-stretch overflow-y-auto">
               {transactions.length > 0 ? (
-                transactions.map((tx) => (
+                pagedHomeTransactions.map((tx) => (
                   <Link
                     key={tx.id}
                     href={`/transfers?tx=${encodeURIComponent(tx.id)}`}
@@ -113,6 +145,25 @@ export default function HomeClient({
                 </p>
               )}
             </div>
+            {transactions.length > 0 && (
+              <PanelPagination
+                currentPage={txPageClamped}
+                totalPages={totalTxPages}
+                onPrevious={() =>
+                  setTxPage((p) =>
+                    Math.max(1, Math.min(p, totalTxPages) - 1),
+                  )
+                }
+                onNext={() =>
+                  setTxPage((p) =>
+                    Math.min(
+                      totalTxPages,
+                      Math.min(p, totalTxPages) + 1,
+                    ),
+                  )
+                }
+              />
+            )}
           </Panel>
         </div>
       </div>

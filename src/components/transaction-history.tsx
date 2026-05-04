@@ -3,20 +3,17 @@
 import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
-import { IconButton } from "@/components/icon-button";
-import { SearchInput } from "@/components/search-input";
+import { PanelPagination } from "@/components/panel-pagination";
+import { PanelSearchToolbar } from "@/components/panel-search-toolbar";
 import { TransactionDrawer } from "@/components/transaction-drawer";
-import {
-  formatDatePillLabel,
-  TransactionPeriodFilter,
-} from "@/components/transaction-period-filter";
+import { formatDatePillLabel } from "@/components/transaction-period-filter";
 import { TransactionRow } from "@/components/transaction-row";
 import { Panel } from "@/components/ui/panel";
 import { maskCardShort } from "@/lib/card-mask";
+import { PANEL_PAGE_SIZE } from "@/lib/pagination";
 import { resolveDisplayName } from "@/lib/transaction-display";
 import { Card, Transaction } from "@/types";
 const TX_QUERY = "tx";
-const PAGE_SIZE = 10;
 const FilterPill = ({
   label,
   onRemove,
@@ -135,10 +132,10 @@ const TransactionHistoryInner = ({
       ),
     [transactions, searchQuery, displayNames],
   );
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PANEL_PAGE_SIZE));
   const visible = filtered.slice(
-    (currentPage - 1) * PAGE_SIZE,
-    currentPage * PAGE_SIZE,
+    (currentPage - 1) * PANEL_PAGE_SIZE,
+    currentPage * PANEL_PAGE_SIZE,
   );
   const grouped = useMemo(() => {
     const map = new Map<string, Transaction[]>();
@@ -188,16 +185,24 @@ const TransactionHistoryInner = ({
           Історія транзакцій
         </h2>
 
-        <div className="@container flex min-w-0 flex-col gap-4 self-stretch">
-          <div className="text-ink-strong flex items-center justify-between gap-3 self-stretch text-base">
-            <SearchInput
-              id="tx-search"
-              value={searchQuery}
-              onChange={handleSearch}
-              placeholder="Пошук"
-              label="Пошук транзакцій"
-              className="text-ink-strong [&_input]:text-ink-strong [&_input]:placeholder:text-ink-strong/70 flex-1 @min-[40rem]:w-60 @min-[40rem]:flex-none"
-            />
+        <PanelSearchToolbar
+          searchId="tx-search"
+          searchValue={searchQuery}
+          onSearchChange={handleSearch}
+          searchPlaceholder="Пошук"
+          searchLabel="Пошук транзакцій"
+          showPeriod={showFilterUI}
+          dateFrom={dateFrom}
+          dateTo={dateTo}
+          onDateFromChange={(v) => {
+            onDateFromChange?.(v);
+            setCurrentPage(1);
+          }}
+          onDateToChange={(v) => {
+            onDateToChange?.(v);
+            setCurrentPage(1);
+          }}
+          rightSlot={
             <button
               type="button"
               onClick={onExportXLS}
@@ -218,23 +223,8 @@ const TransactionHistoryInner = ({
                 />
               </div>
             </button>
-          </div>
-
-          {showFilterUI && (
-            <TransactionPeriodFilter
-              dateFrom={dateFrom}
-              dateTo={dateTo}
-              onDateFromChange={(v) => {
-                onDateFromChange?.(v);
-                setCurrentPage(1);
-              }}
-              onDateToChange={(v) => {
-                onDateToChange?.(v);
-                setCurrentPage(1);
-              }}
-            />
-          )}
-        </div>
+          }
+        />
 
         {hasFilters && (
           <div className="flex flex-wrap items-center gap-2 self-stretch">
@@ -293,29 +283,17 @@ const TransactionHistoryInner = ({
           </p>
         )}
 
-        <div
-          className={`text-ink-strong mt-2 flex items-center justify-center gap-2 self-stretch text-sm ${paginationClassName}`}
-        >
-          <IconButton
-            icon="/icons/arrow-left.svg"
-            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-            disabled={currentPage === 1}
-            aria-label="Попередня сторінка"
-          />
-          <span
-            aria-live="polite"
-            aria-atomic="true"
-            className="min-w-8 text-center font-medium"
-          >
-            {currentPage}/{totalPages}
-          </span>
-          <IconButton
-            icon="/icons/arrow-right.svg"
-            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-            disabled={currentPage === totalPages}
-            aria-label="Наступна сторінка"
-          />
-        </div>
+        <PanelPagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPrevious={() =>
+            setCurrentPage((p) => Math.max(1, p - 1))
+          }
+          onNext={() =>
+            setCurrentPage((p) => Math.min(totalPages, p + 1))
+          }
+          className={`mt-2 flex items-center justify-center gap-2 self-stretch text-sm ${paginationClassName}`}
+        />
       </Panel>
       <TransactionDrawer
         transaction={selectedTransaction}

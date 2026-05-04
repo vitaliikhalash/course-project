@@ -3,24 +3,31 @@
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
-const ROLE_OPTIONS = ["USER", "ADMIN", "OWNER"] as const;
-type RoleOption = (typeof ROLE_OPTIONS)[number];
-interface RolePickerProps {
+import type { CardStatus } from "@/types";
+const CARD_STATUS_OPTIONS: CardStatus[] = [
+  "PENDING",
+  "ACTIVE",
+  "REJECTED",
+  "FROZEN",
+];
+interface CardStatusPickerProps {
   name: string;
-  defaultValue: RoleOption;
+  defaultValue: CardStatus;
   disabled?: boolean;
   ariaLabel: string;
 }
-export const RolePicker = ({
+export const CardStatusPicker = ({
   name,
   defaultValue,
   disabled = false,
   ariaLabel,
-}: RolePickerProps) => {
-  const [selected, setSelected] = useState<RoleOption>(defaultValue);
+}: CardStatusPickerProps) => {
+  const [selected, setSelected] = useState<CardStatus>(defaultValue);
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
-  const availableOptions = ROLE_OPTIONS.filter((option) => option !== selected);
+  const availableOptions = CARD_STATUS_OPTIONS.filter(
+    (option) => option !== selected,
+  );
   useEffect(() => {
     setSelected(defaultValue);
   }, [defaultValue]);
